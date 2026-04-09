@@ -1,19 +1,24 @@
 <script lang="ts">
   import Dropdown from '$lib/elements/Dropdown.svelte';
   import SearchBar from '$lib/elements/SearchBar.svelte';
-  import { PlacesGroupBy, placesViewSettings } from '$lib/stores/preferences.store';
+  import { PlacesGroupBy, PlacesSortBy, placesViewSettings } from '$lib/stores/preferences.store';
   import {
     type PlacesGroupOptionMetadata,
+    type PlacesSortOptionMetadata,
     collapseAllPlacesGroups,
     expandAllPlacesGroups,
     findGroupOptionMetadata,
+    findSortOptionMetadata,
     getSelectedPlacesGroupOption,
     groupOptionsMetadata,
+    sortOptionsMetadata,
   } from '$lib/utils/places-utils';
   import { IconButton } from '@immich/ui';
   import {
     mdiFolderArrowUpOutline,
     mdiFolderRemoveOutline,
+    mdiSortAlphabeticalDescendingVariant,
+    mdiSortVariant,
     mdiUnfoldLessHorizontal,
     mdiUnfoldMoreHorizontal,
   } from '@mdi/js';
@@ -41,12 +46,41 @@
     [PlacesGroupBy.None]: $t('group_no'),
     [PlacesGroupBy.Country]: $t('group_country'),
   });
+
+  const handleChangeSortBy = ({ id }: PlacesSortOptionMetadata) => {
+    $placesViewSettings.sortBy = id;
+  };
+
+  let sortIcon = $derived.by(() => {
+    return selectedSortOption.id === PlacesSortBy.Name ? mdiSortAlphabeticalDescendingVariant : mdiSortVariant; // OR mdiFolderArrowDownOutline
+  });
+
+  let selectedSortOption = $derived(findSortOptionMetadata($placesViewSettings.sortBy));
+
+  let placesSortByNames: Record<PlacesSortBy, string> = $derived({
+    [PlacesSortBy.Name]: $t('sort_name'),
+    [PlacesSortBy.Count]: $t('sort_count'),
+  });
 </script>
 
 <!-- Search Places -->
 <div class="hidden md:block h-10 xl:w-60 2xl:w-80">
   <SearchBar placeholder={$t('search_places')} bind:name={searchQuery} showLoadingSpinner={false} />
 </div>
+
+<!-- Sort Places -->
+<Dropdown
+  position="bottom-right"
+  title={$t('sort_places_by')}
+  options={Object.values(sortOptionsMetadata)}
+  selectedOption={selectedSortOption}
+  onSelect={handleChangeSortBy}
+  render={({ id, isDisabled }) => ({
+    title: placesSortByNames[id],
+    icon: sortIcon,
+    disabled: isDisabled(),
+  })}
+/>
 
 <!-- Group Places -->
 <Dropdown

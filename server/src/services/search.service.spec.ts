@@ -70,10 +70,7 @@ describe(SearchService.name, () => {
       const asset = AssetFactory.from()
         .exif({ latitude: 42, longitude: 69, city: 'city', state: 'state', country: 'country' })
         .build();
-      mocks.asset.getAssetIdByCity.mockResolvedValue({
-        fieldName: 'exifInfo.city',
-        items: [{ value: 'city', data: asset.id }],
-      });
+      mocks.asset.getAssetsForPlaces.mockResolvedValue([getForAsset(asset)]);
       mocks.asset.getByIdsWithAllRelationsButStacks.mockResolvedValue([asset as never]);
       const expectedResponse = [
         { fieldName: 'exifInfo.city', items: [{ value: 'city', data: mapAsset(getForAsset(asset)) }] },

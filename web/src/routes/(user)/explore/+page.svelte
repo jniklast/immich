@@ -6,7 +6,8 @@
   import SingleGridRow from '$lib/components/shared-components/SingleGridRow.svelte';
   import { Route } from '$lib/route';
   import { getAssetMediaUrl, getPeopleThumbnailUrl } from '$lib/utils';
-  import { AssetMediaSize, type SearchExploreResponseDto } from '@immich/sdk';
+  import { getDuplicateCityNames, getUniqueCityName, type Place } from '$lib/utils/places-utils';
+  import { AssetMediaSize, type SearchExploreItem, type SearchExploreResponseDto } from '@immich/sdk';
   import { Icon } from '@immich/ui';
   import { mdiHeart } from '@mdi/js';
   import { t } from 'svelte-i18n';
@@ -23,7 +24,18 @@
     return targetField?.items || [];
   };
 
-  let places = $derived(getFieldItems(data.items, 'exifInfo.city'));
+  const createPlaceItems = (cities: SearchExploreItem[]) => {
+    let places = new Array<Place>();
+    for (const city of cities) {
+      places.push({ city: city.value, state: city.data.exifInfo?.state, country: city.data.exifInfo?.country });
+    }
+
+    return places;
+  };
+
+  let cities = $derived(getFieldItems(data.items, 'exifInfo.city'));
+  const places = $derived(createPlaceItems(cities));
+  let duplicatePlaces = $derived(getDuplicateCityNames(places));
   let people = $state(data.response.people);
 
   let hasPeople = $derived(data.response.total > 0);
@@ -86,19 +98,24 @@
       </div>
       <SingleGridRow class="grid grid-flow-col md:grid-auto-fill-36 grid-auto-fill-28 gap-x-4">
         {#snippet children({ itemCount })}
-          {#each places.slice(0, itemCount) as item (item.data.id)}
-            <a class="relative" href={Route.search({ city: item.value })} draggable="false">
+          {#each cities.slice(0, itemCount) as item, i (item.data.id)}
+            {@const name = getUniqueCityName(duplicatePlaces, places[i])}
+            <a
+              class="relative"
+              href={Route.search({ city: item.value, state: places[i].state, country: places[i].country })}
+              draggable="false"
+            >
               <div class="flex justify-center overflow-hidden rounded-xl brightness-75 filter">
                 <img
                   src={getAssetMediaUrl({ id: item.data.id, size: AssetMediaSize.Thumbnail })}
-                  alt={item.value}
+                  alt={name}
                   class="object-cover aspect-square w-full"
                 />
               </div>
               <span
                 class="absolute bottom-2 w-full text-ellipsis px-1 text-center text-sm font-medium capitalize text-white backdrop-blur-[1px] hover:cursor-pointer"
               >
-                {item.value}
+                {name}
               </span>
             </a>
           {/each}

@@ -833,30 +833,32 @@ export class AssetRepository {
   }
 
   @GenerateSql({ params: [DummyValue.UUID, { minAssetsPerField: 5, maxFields: 12 }] })
-  async getAssetIdByCity(ownerId: string, { minAssetsPerField, maxFields }: AssetExploreFieldOptions) {
-    const items = await this.db
-      .with('cities', (qb) =>
+  async getAssetsForPlaces(ownerId: string, { minAssetsPerField, maxFields }: AssetExploreFieldOptions) {
+    return await this.db
+      .with('city_counts', (qb) =>
         qb
           .selectFrom('asset_exif')
-          .select('city')
-          .where('city', 'is not', null)
-          .groupBy('city')
-          .having((eb) => eb.fn('count', [eb.ref('assetId')]), '>=', minAssetsPerField),
+          .innerJoin('asset', 'asset.id', 'asset_exif.assetId')
+          .select([
+            'city',
+            'state',
+            (eb) => eb.fn.count<number>('asset.id').as('count'),
+            sql<string>`min(asset.id::text)::uuid`.as('representativeId'),
+          ])
+          .where('asset.ownerId', '=', ownerId)
+          .where('asset.visibility', '=', AssetVisibility.Timeline)
+          .where('asset.type', '=', AssetType.Image)
+          .where('asset.deletedAt', 'is', null)
+          .groupBy(['city', 'state']),
       )
-      .selectFrom('asset')
-      .innerJoin('asset_exif', 'asset.id', 'asset_exif.assetId')
-      .innerJoin('cities', 'asset_exif.city', 'cities.city')
-      .distinctOn('asset_exif.city')
-      .select(['assetId as data', 'asset_exif.city as value'])
-      .$narrowType<{ value: NotNull }>()
-      .where('ownerId', '=', asUuid(ownerId))
-      .where('visibility', '=', AssetVisibility.Timeline)
-      .where('type', '=', AssetType.Image)
-      .where('deletedAt', 'is', null)
+      .selectFrom('city_counts')
+      .where('count', '>=', minAssetsPerField)
+      .innerJoin('asset', 'asset.id', 'city_counts.representativeId')
+      .orderBy('city_counts.count', 'desc')
+      .selectAll('asset')
+      .$call(withExif)
       .limit(maxFields)
       .execute();
-
-    return { fieldName: 'exifInfo.city', items };
   }
 
   async upsertFile(

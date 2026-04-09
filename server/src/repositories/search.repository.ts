@@ -379,51 +379,34 @@ export class SearchRepository {
   @GenerateSql({ params: [[DummyValue.UUID]] })
   getAssetsByCity(userIds: string[]) {
     return this.db
-      .withRecursive('cte', (qb) => {
-        const base = qb
+      .with('city_counts', (qb) =>
+        qb
           .selectFrom('asset_exif')
-          .select(['city', 'assetId'])
           .innerJoin('asset', 'asset.id', 'asset_exif.assetId')
+          .select([
+            'city',
+            'state',
+            (eb) => eb.fn.count<number>('asset.id').as('count'),
+            sql<string>`min(asset.id::text)::uuid`.as('representativeId'),
+          ])
           .where('asset.ownerId', '=', anyUuid(userIds))
           .where('asset.visibility', '=', AssetVisibility.Timeline)
           .where('asset.type', '=', AssetType.Image)
           .where('asset.deletedAt', 'is', null)
-          .orderBy('city')
-          .limit(1);
-
-        const recursive = qb
-          .selectFrom('cte')
-          .select(['l.city', 'l.assetId'])
-          .innerJoinLateral(
-            (qb) =>
-              qb
-                .selectFrom('asset_exif')
-                .select(['city', 'assetId'])
-                .innerJoin('asset', 'asset.id', 'asset_exif.assetId')
-                .where('asset.ownerId', '=', anyUuid(userIds))
-                .where('asset.visibility', '=', AssetVisibility.Timeline)
-                .where('asset.type', '=', AssetType.Image)
-                .where('asset.deletedAt', 'is', null)
-                .whereRef('asset_exif.city', '>', 'cte.city')
-                .orderBy('city')
-                .limit(1)
-                .as('l'),
-            (join) => join.onTrue(),
-          );
-
-        return sql<{ city: string; assetId: string }>`(${base} union all ${recursive})`;
-      })
-      .selectFrom('asset')
+          .groupBy(['city', 'state']),
+      )
+      .selectFrom('city_counts')
+      .innerJoin('asset', 'asset.id', 'city_counts.representativeId')
       .innerJoin('asset_exif', 'asset.id', 'asset_exif.assetId')
-      .innerJoin('cte', 'asset.id', 'cte.assetId')
       .selectAll('asset')
-      .select((eb) =>
+      .select((eb) => [
         eb
           .fn('to_jsonb', [eb.table('asset_exif')])
           .$castTo<ShallowDehydrateObject<Selectable<AssetExifTable>>>()
           .as('exifInfo'),
-      )
-      .orderBy('asset_exif.city')
+        'city_counts.count as cityCount',
+      ])
+      .orderBy('city_counts.count', 'desc')
       .execute();
   }
 

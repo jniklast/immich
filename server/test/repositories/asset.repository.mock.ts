@@ -30,7 +30,7 @@ export const newAssetRepositoryMock = (): Mocked<RepositoryInterface<AssetReposi
     getStatistics: vitest.fn(),
     getTimeBucket: vitest.fn(),
     getTimeBuckets: vitest.fn(),
-    getAssetIdByCity: vitest.fn(),
+    getAssetsForPlaces: vitest.fn(),
     upsertFile: vitest.fn(),
     upsertFiles: vitest.fn(),
     deleteFile: vitest.fn(),

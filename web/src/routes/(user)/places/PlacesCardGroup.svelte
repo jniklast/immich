@@ -2,7 +2,13 @@
   import { Route } from '$lib/route';
   import { placesViewSettings } from '$lib/stores/preferences.store';
   import { getAssetMediaUrl } from '$lib/utils';
-  import { type PlacesGroup, isPlacesGroupCollapsed, togglePlacesGroupCollapsing } from '$lib/utils/places-utils';
+  import {
+    type PlacesGroup,
+    getDuplicateCityNames,
+    getUniqueCityName,
+    isPlacesGroupCollapsed,
+    togglePlacesGroupCollapsing,
+  } from '$lib/utils/places-utils';
   import { AssetMediaSize, type AssetResponseDto } from '@immich/sdk';
   import { Icon } from '@immich/ui';
   import { mdiChevronRight } from '@mdi/js';
@@ -17,6 +23,19 @@
 
   let isCollapsed = $derived(!!group && isPlacesGroupCollapsed($placesViewSettings, group.id));
   let iconRotation = $derived(isCollapsed ? 'rotate-0' : 'rotate-90');
+  let duplicateCityNames = $derived(
+    group
+      ? getDuplicateCityNames(
+          group.places.map((place) => {
+            return { city: place.exifInfo?.city, country: place.exifInfo?.country };
+          }),
+        )
+      : getDuplicateCityNames(
+          places.map((place) => {
+            return { city: place.exifInfo?.city, country: place.exifInfo?.country };
+          }),
+        ),
+  );
 </script>
 
 {#if group}
@@ -40,13 +59,16 @@
     <div class="flex flex-row flex-wrap gap-4">
       {#each places as item (item.id)}
         {@const city = item.exifInfo?.city}
-        <a class="relative" href={Route.search({ city })} draggable="false">
+        {@const state = item.exifInfo?.state}
+        {@const country = item.exifInfo?.country}
+        {@const name = getUniqueCityName(duplicateCityNames, { city, state, country })}
+        <a class="relative" href={Route.search({ city, state, country })} draggable="false">
           <div
             class="flex w-[calc((100vw-(72px+5rem))/2)] max-w-39 justify-center overflow-hidden rounded-xl brightness-75 filter"
           >
             <img
               src={getAssetMediaUrl({ id: item.id, size: AssetMediaSize.Thumbnail })}
-              alt={city}
+              alt={name}
               class="object-cover w-39 h-39"
               loading="lazy"
             />
@@ -54,7 +76,7 @@
           <span
             class="absolute bottom-2 w-full text-ellipsis px-1 text-center text-sm font-medium capitalize text-white backdrop-blur-[1px] hover:cursor-pointer"
           >
-            {city}
+            {name}
           </span>
         </a>
       {/each}

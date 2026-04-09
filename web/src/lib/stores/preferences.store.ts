@@ -69,6 +69,7 @@ export interface AlbumViewSettings {
 
 export interface PlacesViewSettings {
   groupBy: string;
+  sortBy: string;
   collapsedGroups: {
     // Grouping Option => Array<Group ID>
     [group: string]: string[];
@@ -126,8 +127,14 @@ export enum PlacesGroupBy {
   Country = 'Country',
 }
 
+export enum PlacesSortBy {
+  Name = 'name',
+  Count = 'count',
+}
+
 export const placesViewSettings = persisted<PlacesViewSettings>('places-view-settings', {
   groupBy: PlacesGroupBy.None,
+  sortBy: PlacesSortBy.Name,
   collapsedGroups: {},
 });
 

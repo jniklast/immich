@@ -1,12 +1,12 @@
 <script lang="ts">
-  import { PlacesGroupBy, type PlacesViewSettings } from '$lib/stores/preferences.store';
+  import { PlacesGroupBy, PlacesSortBy, type PlacesViewSettings } from '$lib/stores/preferences.store';
   import { normalizeSearchString } from '$lib/utils/string-utils';
   import { type AssetResponseDto } from '@immich/sdk';
   import { mdiMapMarkerOff } from '@mdi/js';
-  import { groupBy } from 'lodash-es';
+  import { groupBy, sortBy } from 'lodash-es';
   import PlacesCardGroup from './PlacesCardGroup.svelte';
 
-  import { type PlacesGroup, getSelectedPlacesGroupOption } from '$lib/utils/places-utils';
+  import { type PlacesGroup, getSelectedPlacesGroupOption, getSelectedPlacesSortOption } from '$lib/utils/places-utils';
   import { Icon } from '@immich/ui';
   import { t } from 'svelte-i18n';
 
@@ -71,11 +71,35 @@
     },
   };
 
+  interface PlacesSortOption {
+    [option: string]: (places: AssetResponseDto[]) => AssetResponseDto[];
+  }
+
+  const sortOptions: PlacesSortOption = {
+    /** Sort by name */
+    [PlacesSortBy.Name]: (places): AssetResponseDto[] => {
+      return sortBy(places, function (o) {
+        return o.exifInfo?.city;
+      });
+    },
+
+    /** Sort by asset count (order from Dto)*/
+    [PlacesSortBy.Count]: (places): AssetResponseDto[] => {
+      return places;
+    },
+  };
+
+  const placesSortOption: string = $derived(getSelectedPlacesSortOption(userSettings));
+  const sortingFunction = $derived(sortOptions[placesSortOption] ?? sortOptions[PlacesSortBy.Name]);
+  const sortedPlaces: AssetResponseDto[] = $derived(sortingFunction(places));
+
   const filteredPlaces = $derived.by(() => {
     const searchQueryNormalized = normalizeSearchString(searchQuery);
     return searchQueryNormalized
-      ? places.filter((place) => normalizeSearchString(place.exifInfo?.city ?? '').includes(searchQueryNormalized))
-      : places;
+      ? sortedPlaces.filter((place) =>
+          normalizeSearchString(place.exifInfo?.city ?? '').includes(searchQueryNormalized),
+        )
+      : sortedPlaces;
   });
 
   const placesGroupOption: string = $derived(getSelectedPlacesGroupOption(userSettings));

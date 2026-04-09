@@ -18,6 +18,11 @@ import { AssetTable } from 'src/schema/tables/asset.table';
   using: 'gist',
   expression: 'll_to_earth_public(latitude, longitude)',
 })
+@Index({
+  name: 'IDX_asset_exif_city_state_asset_id_count',
+  columns: ['city', 'state', 'assetId'],
+  where: `"city" IS NOT NULL`,
+})
 @UpdatedAtTrigger('asset_exif_updatedAt')
 export class AssetExifTable {
   @ForeignKeyColumn(() => AssetTable, { onDelete: 'CASCADE', primary: true })

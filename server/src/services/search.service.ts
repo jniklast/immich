@@ -40,10 +40,9 @@ export class SearchService extends BaseService {
 
   async getExploreData(auth: AuthDto) {
     const options = { maxFields: 12, minAssetsPerField: 5 };
-    const cities = await this.assetRepository.getAssetIdByCity(auth.user.id, options);
-    const assets = await this.assetRepository.getByIdsWithAllRelationsButStacks(cities.items.map(({ data }) => data));
+    const assets = await this.assetRepository.getAssetsForPlaces(auth.user.id, options);
     const items = assets.map((asset) => ({ value: asset.exifInfo!.city!, data: mapAsset(asset, { auth }) }));
-    return [{ fieldName: cities.fieldName, items }];
+    return [{ fieldName: 'exifInfo.city', items }];
   }
 
   async searchMetadata(auth: AuthDto, dto: MetadataSearchDto): Promise<SearchResponseDto> {
